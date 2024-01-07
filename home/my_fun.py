@@ -339,29 +339,39 @@ def calculate_words_per_minute(words_correct, transcribed_text):
     words_per_minute = (words_correct / audio_duration) * 60
     return words_per_minute
 
-def calculate_error_metrics(original_text, transcribed_text,delete,insert,sub):
-    print(delete,insert,sub)
+def calculate_error_metrics(original_text, transcribed_text, delete, insert, sub, manual_text):
     words_original = original_text.split()
     words_transcribed = transcribed_text.split()
 
-    
+    if manual_text:
+        words_manual_text = manual_text.split()
+        wt_maual = len(words_manual_text)
+    else:
+        words_manual_text = []
+        wt_maual = 0
+
     wr = len(words_transcribed)
-    wt=  len(words_original)
-    wc = wt-(delete+insert+sub)
-    #up= wr-(delete+insert)
-    acc= wc*100/wt
-    wc=max(0,wc)
-    acc=max(0,acc)
+    wt_original = len(words_original)
+    wc = wt_original - (delete + insert + sub)
+
+    acc = wc * 100 / wt_original
+    wc = max(0, wc)
+    acc = max(0, acc)
+    oriVsTran = 100 * min(wt_original / wr, wr / wt_original)
+    manualVsTrans = 100 * min(wt_maual / wr, wr / wt_maual) if wt_maual > 0 else 0
+    manualVsorginal = 100 * min(wt_maual / wt_original, wt_original / wt_maual) if wt_maual > 0 else 0
 
     error_metrics = {
         'WR': wr,
         'WC': wc,
         'Words Correct per Minute': calculate_words_per_minute(wc, transcribed_text),
-        'Acc':acc
+        'Acc': acc,
+        'oriVsTran': oriVsTran,
+        'manualVsTrans': manualVsTrans,
+        'manualVsorginal': manualVsorginal
     }
 
     return error_metrics
-
 def calculate_word_count_ratio(transcribed_text, original_text, max_ratio=100):
     word_count_org = count_words(original_text)
     word_count_transcribed = count_words(transcribed_text)
