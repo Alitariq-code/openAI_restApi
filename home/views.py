@@ -8,6 +8,7 @@ import pandas as pd  # Import pandas library
 from asgiref.sync import async_to_sync
 import logging
 import json
+import time
 from .my_fun import (
     get_wav_duration,
     analyze_audio,
@@ -75,6 +76,7 @@ class ProcessApiView(APIView):
             audio_url = data.get('audio_url')
             original_text = data.get('original_text')
             id = data.get('id')
+            manual_text= data.get('manual_text')
             transcrib = ''
             print(id)
 
@@ -107,18 +109,21 @@ class ProcessApiView(APIView):
             else:
                 print("okok")
                 print("Searching for ID:", id)
+
+                start_time = time.time()
+                timeout_duration = 90  # 90 seconds = 1.5 minutes
                 id_found = False
-                while True:
+
+                while not id_found and time.time() - start_time < timeout_duration:
+                    elapsed_time = time.time() - start_time
+                    print(f"Elapsed time: {elapsed_time:.2f} seconds")
+
                     for item in bufferData:
-                        print("Checking item:", item)
                         if 'id' in item and item['id'] == id:
                             transcrib = item['Text']
                             print("Data of this:", transcrib)
                             id_found = True  # Set the flag to True when ID is found
-                            break
-
-                    if id_found:
-                        break  # Break out of the outer while loop when ID is found
+                            break # Break out of the outer while loop when ID is found
                 substituted_words, delete_words, insert_words,merged = compare_lines(original_text, transcrib)
                 duplicate_lines = count_duplicate_lines(transcrib)
                 skipped_lines = count_skipped_lines(transcrib)
@@ -132,7 +137,7 @@ class ProcessApiView(APIView):
                 # Convert DataFrames to lists of dictionaries
                 delete, insert, sub = len(delete_words), len(insert_words), len(substituted_words)
                 print(delete, insert, sub)
-                error_metrics = calculate_error_metrics(original_text, transcrib, delete=delete, insert=insert, sub=sub)
+                error_metrics = calculate_error_metrics(original_text, transcrib, delete, insert, sub, manual_text)
 
                 formatted_deleted_words = format_word_list(delete_words)
                 formatted_inserted_words = format_word_list(insert_words)
@@ -155,7 +160,9 @@ class ProcessApiView(APIView):
                     'word_count': word_count,
                     'error_metrics': error_metrics,
                     'accuracy': accuracy,
-                    'original_vs_audio': original_vs_audio,
+                    'original_vs_audio': error_metrics['oriVsTran'],
+                    'manualVsTrans':error_metrics['manualVsTrans'], 
+                    'manualVsorginal':error_metrics['manualVsorginal'],     
                     'audio_duration': audio_duration,
                     'transcription_confidence': 76,
                     # Add other metrics as needed
@@ -171,111 +178,3 @@ class ProcessApiView(APIView):
 
     async def async_response(self, data):
         return Response(data, status=status.HTTP_200_OK)
-
-
-
-# class ProcessApiView(APIView):
-#     @async_to_sync
-#     async def post(self, request, *args, **kwargs):    
-#         # print("View is executing...")
-#         try:
-#             data = request.data  # Use request.data to get the parsed data
-#             # print("data", data)
-#             audio_url = data.get('audio_url')
-#             original_text = data.get('original_text')
-#             id = data.get('id')
-#             print(id)
-
-            
-#             # Download the audio file from the provided URL
-#             response = requests.get(audio_url)
-#             if response.status_code != 200:
-#                 raise Exception(f"Failed to download audio from the provided URL. Status code: {response.status_code}")
-
-#             # Save audio data to a temporary file
-#             audio_file_path = "temp_original.wav"
-#             with open(audio_file_path, "wb") as temp_file:
-#                 temp_file.write(response.content)
-#             # print('hello')
-#             # Convert audio to mono and set sample width to 2 bytes
-#             audio = AudioSegment.from_file(audio_file_path)
-#             audio = audio.set_channels(1).set_sample_width(2)
-#             audio.export("temp.wav", format="wav")
-
-#             # print("before")            
-#             transcribed_text = await transcribe_audio("temp.wav")
-
-#             # print("after")
-#             # print("transcribed_text", transcribed_text)
-#             substituted_words,delete_words,insert_words= compare_lines(original_text, transcribed_text)
-#             duplicate_lines = count_duplicate_lines(transcribed_text)
-#             skipped_lines = count_skipped_lines(transcribed_text)
-#             word_count = count_words(transcribed_text)
-
-#             # Calculate error metrics
-#             # error_metrics = calculate_error_metrics(original_text, transcribed_text)
-
-#             # Calculate pause metrics
-#             # pause_metrics = calculate_pause_metrics(transcribed_text)
-#             # Additional analysis and metrics calculations go here...
-
-#             # Convert DataFrames to list of dictionaries
-#             # df_delete_list = df_delete.to_dict(orient='records')
-#             # df_substitute_list = df_substitute.to_dict(orient='records')
-#             # df_insert_list = df_insert.to_dict(orient='records')
-
-#             correct_words = word_count - len(insert_words)  # Exclude inserted words from the correct count
-#             # accuracy = (correct_words / word_count) * 100 if word_count != 0 else 0
-
-#             audio_duration = get_wav_duration('temp.wav')
-#            # Calculate pause metrics
-#             pause_metrics = calculate_pause_metrics(transcribed_text)
-
-#         # Convert DataFrames to lists of dictionaries
-#             delete, insert, sub = len(delete_words), len(insert_words), len(substituted_words)
-#             print(delete,insert,sub)
-#             error_metrics = calculate_error_metrics(original_text, transcribed_text, delete=delete, insert=insert, sub=sub)
-
-#             formatted_deleted_words = format_word_list(delete_words)
-#             formatted_inserted_words = format_word_list(insert_words)
-#             formatted_substituted_words = format_word_list(substituted_words)
-
-
-
-       
-#             accuracy=error_metrics['Acc']
-
-#             original_vs_audio = calculate_word_count_ratio(transcribed_text, original_text)
-        
-#             # original_vs_audio = calculate_word_count_ratio(transcribed_text, original_text)
-#             analysis_result = analyze_audio('temp.wav')
-#             # Prepare JSON response with additional outcomes
-#             response_data = {
-#                 'transcribed_text': transcribed_text,
-#                 'analysis_result': analysis_result,
-#                 'deleted_words': formatted_deleted_words,
-#                 'inserted_words': formatted_inserted_words,
-#                 'substituted_words': formatted_substituted_words,
-#                 'duplicate_lines': duplicate_lines,
-#                 'skipped_lines': skipped_lines,
-#                 'word_count': word_count,
-#                 'error_metrics': error_metrics,
-#                 'accuracy': accuracy,
-
-#                 'original_vs_audio': original_vs_audio,
-#                 # 'accuracy': accuracy,
-#                 'audio_duration': audio_duration,
-#                 'transcription_confidence': 76,
-#                 # Add other metrics as needed
-#             }
-#             print(response_data)
-#             return Response(response_data, status=status.HTTP_200_OK)
-
-#         except requests.exceptions.RequestException as e:
-#              return Response({'error': f"Request error: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-#         except Exception as e:
-#              return Response({'error': f"An unexpected error occurred: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
-#     async def async_response(self, data):
-#         return Response(data, status=status.HTTP_200_OK)
-
