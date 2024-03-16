@@ -32,7 +32,7 @@ DEBUG = True
 CORS_ALLOWED_ORIGINS = [
     # 'http://localhost:3000',  # Adjust with your frontend origin
     # 'https://yourfrontenddomain.com',
-    'http://127.0.0.1:5504',  # Add your frontend origin
+    'http://127.0.0.1:5500',  # Add your frontend origin
 ]
 ALLOWED_HOSTS = ['*']
 

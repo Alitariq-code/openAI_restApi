@@ -20,25 +20,29 @@ from .my_fun import (
     calculate_word_count_ratio,
     # transcribe_audio
 )
+# import transcribe_audio_vosk from check
+from home.check import transcribe_audio
+from home.check import add_timing_to_merged
+from home.check import analyze_speech
 # from .backend import transcribe_audio
 import timeit
 import whisper
 import asyncio
 model = None    
 
-async def load_model():
-    global model
-    # Load the model asynchronously
-    model = await asyncio.to_thread(whisper.load_model, "base")
+# async def load_model():
+#     global model
+#     # Load the model asynchronously
+#     model = await asyncio.to_thread(whisper.load_model, "base")
 
-async def transcribe_audio(file_path):
-    print("doinggggg")
-    if model is None:
-        await load_model()
-    # Transcribe the audio file
-    result = await asyncio.to_thread(model.transcribe, file_path)
-    print(result["text"])
-    return result["text"]
+# async def transcribe_audio(file_path):
+#     print("doinggggg")
+#     if model is None:
+#         await load_model()
+#     # Transcribe the audio file
+#     result = await asyncio.to_thread(model.transcribe, file_path)
+#     print(result["text"])
+#     return result["text"]
     
 def calculate_pause_metrics(transcribed_text):
     # Your logic for pause metrics calculation goes here
@@ -78,6 +82,7 @@ class ProcessApiView(APIView):
             id = data.get('id')
             manual_text= data.get('manual_text')
             transcrib = ''
+            timing=''
             print(id)
 
             # Download the audio file from the provided URL
@@ -96,10 +101,11 @@ class ProcessApiView(APIView):
                 audio = audio.set_channels(1).set_sample_width(2)
                 audio.export("temp.wav", format="wav")
 
-                transcribed_text = await transcribe_audio("temp.wav")
+                transcribed_text,timing = await transcribe_audio("temp.wav")
                 newData = {}
                 newData["id"] = id
                 newData["Text"] = transcribed_text
+                newData["timing"] = timing
                 bufferData.append(newData)
                 print(bufferData)
                 response = {
@@ -121,6 +127,7 @@ class ProcessApiView(APIView):
                     for item in bufferData:
                         if 'id' in item and item['id'] == id:
                             transcrib = item['Text']
+                            timing = item['timing']
                             print("Data of this:", transcrib)
                             id_found = True  # Set the flag to True when ID is found
                             break # Break out of the outer while loop when ID is found
@@ -128,6 +135,10 @@ class ProcessApiView(APIView):
                 duplicate_lines = count_duplicate_lines(transcrib)
                 skipped_lines = count_skipped_lines(transcrib)
                 word_count = count_words(transcrib)
+                print("==============================")
+                merged=add_timing_to_merged(merged,timing)
+                pauses, hesitations, self_corrections=analyze_speech(timing)
+                print("==============================")
 
                 correct_words = word_count - len(insert_words)  # Exclude inserted words from the correct count
 
@@ -164,7 +175,9 @@ class ProcessApiView(APIView):
                     'manualVsTrans':error_metrics['manualVsTrans'], 
                     'manualVsorginal':error_metrics['manualVsorginal'],     
                     'audio_duration': audio_duration,
-                    'transcription_confidence': 76,
+                   'pauses': pauses,
+                    'hesitations': hesitations,
+                    'self_corrections': self_corrections,
                     # Add other metrics as needed
                 }
                 print(response_data)
