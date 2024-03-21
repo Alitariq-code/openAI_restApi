@@ -2,33 +2,49 @@ import asyncio
 import whisper
 
 
-def add_timing_to_merged(merged, timing_data):
-    # Create a dictionary to store timings for each word to handle duplicate words
-    word_timings = {}
+# def add_timing_to_merged(merged, timing_data):
+#     # Create a dictionary to store timings for each word to handle duplicate words
+#     word_timings = {}
 
-    # Iterate through timing data and populate the word_timings dictionary
-    for start, end, word in timing_data:
-        if word not in word_timings:
-            word_timings[word] = {'Start': start, 'End': end}
+#     # Iterate through timing data and populate the word_timings dictionary
+#     for start, end, word in timing_data:
+#         if word not in word_timings:
+#             word_timings[word] = {'Start': start, 'End': end}
 
-    # Iterate through merged words and assign timing
-    for word_info in merged:
-        word = word_info['Word']
-        word_id = word_info['ID']  # Get the ID of the word
-        if word_info['Class'] == 'Deletion':
-            word_info['Timing'] = {}
-        else:
-            if word in word_timings:
-                # Assign timing based on the ID of the word
-                if word_id in range(len(timing_data)):
-                    start_time, end_time, _ = timing_data[word_id]
-                    word_info['Timing'] = {'Start': start_time, 'End': end_time}
-                else:
-                    word_info['Timing'] = {}
-            else:
-                word_info['Timing'] = {}
+#     # Iterate through merged words and assign timing
+#     for word_info in merged:
+#         word = word_info['Word']
+#         word_id = word_info['ID']  # Get the ID of the word
+#         if word_info['Class'] == 'Deletion':
+#             word_info['Timing'] = {}
+#         else:
+#             if word in word_timings:
+#                 # Assign timing based on the ID of the word
+#                 if word_id in range(len(timing_data)):
+#                     start_time, end_time, _ = timing_data[word_id]
+#                     word_info['Timing'] = {'Start': start_time, 'End': end_time}
+#                 else:
+#                     word_info['Timing'] = {}
+#             else:
+#                 word_info['Timing'] = {}
 
-    return merged
+#     return merged
+def add_timing_to_merged(word_data, timing_data):
+    # Initialize a counter for the timing data index
+    timing_index = 0
+
+    # Iterate over the word data
+    for word in word_data:
+        # If the word is not a deletion, assign the corresponding timing information
+        if word['Class'] != 'Deletion':
+            start_time, end_time, _ = timing_data[timing_index]
+            word['Start'] = start_time
+            word['End'] = end_time
+
+            # Move to the next timing data entry
+            timing_index += 1
+
+    return word_data
 
 
 
@@ -93,15 +109,5 @@ def analyze_speech(data):
 
     return pauses, hesitations, self_corrections
 
-# if __name__ == "__main__":
-#     # Run the transcription and print the word timings
-#     asyncio.run(transcribe_audio("/media/alicode/New_SSD/Speech_Project/Backend/openAI_restApi/temp_original.wav"))
-#     # print(word_timings)
-#     merged=add_timing_to_merged(merged,word_timings)
-#     print(word_timings)
-#     pauses, hesitations, self_corrections=analyze_speech(word_timings)
-#     print('pauses',pauses,'hesitations', hesitations,'self_corrections', self_corrections)
-   
-#     # for word_info in merged:
-#     #     print(word_info)
+
     

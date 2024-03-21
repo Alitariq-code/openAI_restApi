@@ -30,20 +30,7 @@ import whisper
 import asyncio
 model = None    
 
-# async def load_model():
-#     global model
-#     # Load the model asynchronously
-#     model = await asyncio.to_thread(whisper.load_model, "base")
 
-# async def transcribe_audio(file_path):
-#     print("doinggggg")
-#     if model is None:
-#         await load_model()
-#     # Transcribe the audio file
-#     result = await asyncio.to_thread(model.transcribe, file_path)
-#     print(result["text"])
-#     return result["text"]
-    
 def calculate_pause_metrics(transcribed_text):
     # Your logic for pause metrics calculation goes here
     # Placeholder values are used, replace them with actual calculations
